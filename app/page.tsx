@@ -18,6 +18,7 @@ const WINNING_SEQUENCE = [
 ];
 
 export default function Home() {
+    // Animation
     const [animatedBoard, setAnimatedBoard] = useState(Array(9).fill(""));
     const moveIndexRef = useRef(0);
     const [showLine, setShowLine] = useState(false);
@@ -26,6 +27,7 @@ export default function Home() {
     const [gameLink, setGameLink] = useState("");
     const [copied, setCopied] = useState(false);
 
+    // Animation for the tic tac toe board.
     useEffect(() => {
         const interval = setInterval(() => {
             if (moveIndexRef.current >= WINNING_SEQUENCE.length) {
@@ -40,11 +42,12 @@ export default function Home() {
                 return next;
             });
             moveIndexRef.current += 1;
-        }, 600); // ms between each move
+        }, 300);
 
         return () => clearInterval(interval);
     }, []);
 
+    // Socket event listenrs
     useEffect(() => {
         const socket = io({
             reconnection: true,
@@ -75,6 +78,7 @@ export default function Home() {
         setTimeout(() => setCopied(false), 2000);
     };
 
+    // Animation
     const getCellCenter = (index: number) => {
         const col = index % 3
         const row = Math.floor(index / 3)
@@ -85,8 +89,8 @@ export default function Home() {
     }
 
     return (
-        <main className="relative flex flex-col gap-4 justify-center items-center min-h-screen bg-white">
-            <div className="flex flex-col justify-center items-center">
+        <main className="relative flex flex-col gap-4 justify-center items-center min-h-screen">
+            <div className="flex flex-col justify-center items-center gap-2">
                 <h1 className="text-amber-600 text-5xl" style={{
                     textShadow: `
                         -1px -1px 0 rgba(255,255,255,0.3),
@@ -108,7 +112,7 @@ export default function Home() {
                                 y1={`${getCellCenter(6).y}%`}
                                 x2={`${getCellCenter(8).x}%`}
                                 y2={`${getCellCenter(8).y}%`}
-                                stroke="black"
+                                stroke="currentColor"
                                 strokeWidth="4"
                                 strokeLinecap="round"
                                 style={{
@@ -129,7 +133,7 @@ export default function Home() {
                 Start Game
             </button>
 
-            {/* Popup */}
+            {/* Gamelink Popup */}
             {gameLink && (
                 <div>
                     {/* Backdrop */}
@@ -143,7 +147,6 @@ export default function Home() {
                         <h2 className="text-lg font-semibold text-amber-700 text-center">Share this link</h2>
                         <p className="text-sm text-gray-500">Send this link to your friend to start the game.</p>
 
-                        {/* Copy row */}
                         <div className="flex items-center gap-2 border border-gray-200 rounded-lg p-2">
                             <span className="text-sm text-gray-700 truncate flex-1">{gameLink}</span>
                             <button onClick={handleCopy} className="...">
@@ -151,7 +154,6 @@ export default function Home() {
                             </button>
                         </div>
 
-                        {/* Redirect button */}
                         <Link
                             href={gameLink}
                             className="flex items-center justify-center gap-2 bg-[#d27f1b] text-white rounded-lg py-2 hover:bg-amber-700 transition-colors"

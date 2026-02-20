@@ -25,6 +25,7 @@ export default function Home() {
 
     const socketRef = useRef<Socket | null>(null);
 
+    // Socket init listeners 
     useEffect(() => {
         const socket = io({
             reconnection: true,
