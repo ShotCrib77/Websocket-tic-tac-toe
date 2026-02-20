@@ -1,65 +1,109 @@
-import Image from "next/image";
+"use client";
+import { io } from "socket.io-client";
+import Board from "./components/Board";
+import { useEffect, useState } from "react";
+import PlayAgain from "./components/PlayAgain"
+import { useRef } from "react";
+import { Socket } from "socket.io-client";
+import LoadingDots from "./components/LoadingDots";
 
 export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+    const [disconnect, setDisconnect] = useState(false);
+    const [waiting, setWaiting] = useState(true);
+    const [symbol, setSymbol] = useState("");
+    const [turn, setTurn] = useState("X");
+    const [winner, setWinner] = useState("");
+    const [board, setBoard] = useState(["", "", "",
+                                        "", "", "", 
+                                        "", "", ""]);
+
+    const socketRef = useRef<Socket | null>(null);
+
+    useEffect(() => {
+        const socket = io({
+            reconnection: true,
+        });
+
+        socketRef.current = socket;
+
+        socket.on("connect", () => {
+            console.log("connected", socket.id);
+        });
+
+        socket.on("init", (data) => {
+            setSymbol(data.symbol);
+            setBoard(data.board);
+            setTurn(data.turn);
+            setWinner(data.winner);
+        });
+
+        socket.on("playerClick", (data) => {
+            setWinner(data.winner);
+            setBoard(data.board);
+            setTurn(data.turn);
+        });
+
+        socket.on("playAgain", () => {
+            setTurn("X");
+            setWinner("");
+            setBoard(["", "", "", "", "", "", "", "", ""]);
+        });
+
+        socket.on("waiting", () => {
+            setWaiting(true);
+        });
+
+        socket.on("gameReady", () => {
+            setWaiting(false);
+        });
+
+        socket.on("enemyDc", () => {
+            setDisconnect(true);
+        });
+
+        return () => {
+            socket.disconnect();
+        };
+    }, []);
+
+    const handlePlayAgainClick = () => {
+        setDisconnect(false);
+        socketRef.current?.emit("playAgain");
+    }
+    
+    const handleClick = (index: number) => {
+        console.log(index, turn, symbol);
+
+        if (board[index]) { return };
+        
+        if (turn === symbol) {
+            console.log("angry bird");
+            socketRef.current?.emit("playerClick", { index: index });
+        }
+    }
+
+    return (
+        <main className="relative flex flex-col gap-4 justify-center items-center min-h-screen bg-white">
+
+            {(waiting && !disconnect) ? ( 
+                <div className="text-3xl text-black flex ">
+                    <span className="mr-2">Waiting for player 2</span> <LoadingDots /> 
+                </div> 
+            ) :
+            (
+                <div className="text-3xl text-black flex ">
+                    <span className="mr-2">{`Player ${turn}'s turn`}</span>
+                </div> 
+            )}
+            
+            <Board handleClick={(index) => handleClick(index)} board={board}/>
+
+            {(winner || disconnect) &&
+                <div className="fixed top-0 left-0 w-full h-full bg-[#000000b6] flex flex-col justify-center items-center gap-4">
+                    <span className="text-5xl text-white z-50">{disconnect ? `${symbol === "X" ? "O" : "X"} dissconected ${symbol} won!` : winner === "draw" ? "Draw" :  `${winner} won!` }</span>
+                    <PlayAgain handlePlayAgain={handlePlayAgainClick}/>
+                </div>
+            }
+        </main>
+    );
 }
